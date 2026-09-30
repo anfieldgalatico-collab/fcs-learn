@@ -180,12 +180,15 @@ function setRepUI(user){
 }
 let AIQ=[];
 async function aiCall(prompt){
-  const r=await fetch("https://text.pollinations.ai/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"openai",messages:[{role:"user",content:prompt}]})});
-  if(!r.ok) throw new Error("AI service busy (HTTP "+r.status+"). Try again.");
-  const j=await r.json();
-  const t=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
-  if(!t) throw new Error("Empty AI reply. Try again.");
-  return t;
+  try{
+    const r=await fetch("https://text.pollinations.ai/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"openai",messages:[{role:"user",content:prompt}]})});
+    if(r.ok){const j=await r.json();const t=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;if(t)return t;}
+  }catch(e){}
+  const r2=await fetch("https://text.pollinations.ai/"+encodeURIComponent(prompt.slice(0,4000))+"?model=openai");
+  if(!r2.ok) throw new Error("AI service busy (HTTP "+r2.status+"). Try again.");
+  const t2=await r2.text();
+  if(!t2) throw new Error("Empty AI reply. Try again.");
+  return t2;
 }
 function loadPdfJs(){
   if(window.pdfjsLib) return Promise.resolve();
