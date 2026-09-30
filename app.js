@@ -217,6 +217,18 @@ async function aiGetText(){
   throw new Error("Paste notes or upload a PDF/TXT first.");
 }
 function aiBusy(on,msg){$("aiExplainBtn").disabled=on;$("aiGenBtn").disabled=on;$("aiMsg").textContent=on?(msg||"AI is thinking…"):msg||"";}
+function aiSolveBusy(on,msg){["aiExplainBtn","aiGenBtn","aiSolveBtn"].forEach(function(id){var b=$(id);if(b)b.disabled=on;});$("aiMsg").textContent=on?(msg||"AI is solving…"):msg||"";}
+async function aiSolve(){
+  try{
+    aiSolveBusy(true,"AI is solving…");
+    $("aiResult").hidden=true;
+    const text=(await aiGetText()).slice(0,12000);
+    const out=await aiCall(AI_STYLE+"You are a study tutor for Nigerian university computer science students. Solve every question in the following assignment step by step. Give the final answer for each numbered question clearly, with short workings where needed. Assignment:\n\n"+text);
+    $("aiResult").innerHTML="<h3>Solution</h3><p style='white-space:pre-wrap'>"+esc(aiClean(out))+"</p>";
+    $("aiResult").hidden=false;
+    aiSolveBusy(false,"");
+  }catch(e){aiSolveBusy(false,"");$("aiMsg").textContent="Failed: "+((e&&e.message)||e);}
+}
 function aiClean(t){
   return String(t).split("\n").map(function(line){
     let s=line.replace(/^#{1,6}\s*/,"").replace(/^\s*[-*]\s+/,"").replace(/\*\*(.*?)\*\*/g,"$1").replace(/__([^_]+)__/g,"$1").replace(/`([^`]*)`/g,"$1").replace(/^\s*>\s?/,"").trim();
@@ -364,6 +376,17 @@ async function aiUpGen(){
     $("aiUpMsg").textContent="Draft ready from "+u.files+" file"+(u.files===1?"":"s")+(u.skipped?"; "+u.skipped+" skipped":"")+". Read, practice, or ask the rep to approve.";
   }catch(e){$("aiUpMsg").textContent="Failed: "+((e&&e.message)||e);}
 }
+async function aiUpSolve(){
+  try{
+    $("aiUpMsg").textContent="Reading uploads…";
+    const u=await aiUploadContext();
+    $("aiUpMsg").textContent="AI is solving…";
+    const out=await aiCall(AI_STYLE+"You are a study tutor for Nigerian university computer science students. Solve every question in these course materials for "+u.c+" step by step. Give the final answer for each numbered question clearly, with short workings where needed. Materials:\n\n"+u.text);
+    $("aiResult").innerHTML="<h3>Solution: "+esc(u.c)+"</h3><p style='white-space:pre-wrap'>"+esc(aiClean(out))+"</p>";
+    $("aiResult").hidden=false;
+    $("aiUpMsg").textContent="Done — solved from "+u.files+" file"+(u.files===1?"":"s")+".";
+  }catch(e){$("aiUpMsg").textContent="Failed: "+((e&&e.message)||e);}
+}
 async function aiSave(){
   if(!repUnlocked){$("aiSaveMsg").textContent="Only the signed-in rep can approve to the bank.";return;}  const course=$("aiCourse").value.trim().toUpperCase();
   if(!course||!AIQ.length){$("aiSaveMsg").textContent="Draft questions + course code needed.";return;}
@@ -400,6 +423,8 @@ function init(){
   $("aiSaveBtn").addEventListener("click",aiSave);
   $("aiUpExplainBtn").addEventListener("click",aiUpExplain);
   $("aiUpGenBtn").addEventListener("click",aiUpGen);
+  if($("aiUpSolveBtn"))$("aiUpSolveBtn").addEventListener("click",aiUpSolve);
+  if($("aiSolveBtn"))$("aiSolveBtn").addEventListener("click",aiSolve);
   $("uUploadBtn").addEventListener("click",doUpload);
   $("repUnlockBtn").addEventListener("click",async function(){
     const em=$("repEmail").value.trim(),pw=$("repPass").value;
