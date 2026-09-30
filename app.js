@@ -55,7 +55,8 @@ function renderOutlines(){
   if(dbError){$("outlineList").innerHTML="<div class='card'>"+esc(dbError)+"</div>";return;}
   const d=$("cDept").value,l=$("cLevel").value,s=$("cSem").value;
   const q=$("cSearch").value.trim().toUpperCase();
-  const out=COURSES.filter(function(o){return (!d||o.dept===d)&&(!l||o.level===l)&&(!s||o.semester===s)&&(!q||(o.course+" "+(o.title||"")).toUpperCase().indexOf(q)>=0);});
+  if(!d||!l||!s){$("outlineList").innerHTML="<div class='card'>Select department, level and semester above to see the courses for that section.</div>";return;}
+  const out=COURSES.filter(function(o){return o.dept===d&&o.level===l&&o.semester===s&&(!q||(o.course+" "+(o.title||"")).toUpperCase().indexOf(q)>=0);});
   if(!out.length){$("outlineList").innerHTML="<div class='card'>No courses listed yet. The rep posts them each semester.</div>";return;}
   $("outlineList").innerHTML=out.map(function(o){return "<div class='card'><h4>"+esc(o.course)+(o.title?" — "+esc(o.title):"")+"</h4><div class='meta'><span class='badge'>"+esc(deptCode[o.dept]+" | "+o.level+"L | "+o.semester)+"</span></div>"+(o.body?"<p style='white-space:pre-wrap'>"+esc(o.body)+"</p>":"")+"</div>";}).join("");
 }
