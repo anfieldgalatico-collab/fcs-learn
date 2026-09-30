@@ -178,6 +178,198 @@ function setRepUI(user){
   if(repUnlocked) renderRepManage();
   renderBrowse();renderPastFiles();renderOutlines();
 }
+let AIQ=[];
+async function aiCall(prompt){
+  const r=await fetch("https://text.pollinations.ai/openai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"openai",messages:[{role:"user",content:prompt}]})});
+  if(!r.ok) throw new Error("AI service busy (HTTP "+r.status+"). Try again.");
+  const j=await r.json();
+  const t=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+  if(!t) throw new Error("Empty AI reply. Try again.");
+  return t;
+}
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve();
+  return new Promise(function(res,rej){
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    s.onload=function(){window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";res();};
+    s.onerror=function(){rej(new Error("PDF reader failed to load."));};
+    document.head.appendChild(s);
+  });
+}
+async function aiGetText(){
+  const f=$("aiFile").files[0];
+  const pasted=$("aiInput").value.trim();
+  if(f){
+    if(/\.txt$/i.test(f.name)||f.type.indexOf("text")===0) return await f.text();
+    if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){
+      await loadPdfJs();
+      const buf=await f.arrayBuffer();
+      const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+      let out="";
+      const n=Math.min(pdf.numPages,20);
+      for(let i=1;i<=n;i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();out+=tc.items.map(function(it){return it.str;}).join(" ")+"\n";}
+      return out.trim();
+    }
+    throw new Error("AI accepts pasted text, .txt or .pdf only.");
+  }
+  if(pasted) return pasted;
+  throw new Error("Paste notes or upload a PDF/TXT first.");
+}
+function aiBusy(on,msg){$("aiExplainBtn").disabled=on;$("aiGenBtn").disabled=on;$("aiMsg").textContent=on?(msg||"AI is thinking…"):msg||"";}
+async function aiExplain(){
+  try{
+    aiBusy(true,"AI is breaking it down…");
+    $("aiResult").hidden=true;
+    const text=(await aiGetText()).slice(0,12000);
+    const out=await aiCall("You are a study tutor for Nigerian university computer science students. Explain the following lecture notes simply and clearly: key ideas first, then short bullet points, then 3 likely exam takeaways. Notes:\n\n"+text);
+    $("aiResult").innerHTML="<h3>Breakdown</h3><p style='white-space:pre-wrap'>"+esc(out)+"</p>";
+    $("aiResult").hidden=false;
+    aiBusy(false,"");
+  }catch(e){aiBusy(false,"");$("aiMsg").textContent="Failed: "+((e&&e.message)||e);}
+}
+function aiTryParse(s){
+  try{return JSON.parse(s);}catch(e){}
+  try{return JSON.parse(s.replace(/,\s*([}\]])/g,"$1"));}catch(e){}
+  let t=s.replace(/,\s*([}\]])/g,"$1");
+  for(let k=0;k<20;k++){
+    const i=t.lastIndexOf("},");
+    if(i<0) break;
+    t=t.slice(0,i+1)+"]";
+    try{return JSON.parse(t);}catch(e){t=t.slice(0,i)+"]";try{return JSON.parse(t);}catch(e2){}}
+  }
+  throw new Error("AI reply was not clean JSON. Press Generate again.");
+}
+function aiParseQuestions(raw){
+  let s=raw;
+  const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if(fence) s=fence[1];
+  const arr=s.match(/\[[\s\S]*\]/);
+  if(arr) s=arr[0];
+  const data=aiTryParse(s);
+  if(!Array.isArray(data)||!data.length) throw new Error("AI returned no questions.");
+  return data.slice(0,20).map(function(d,i){
+    if(!d.q||!Array.isArray(d.options)||d.options.length!==4) throw new Error("Bad question format at #"+(i+1)+".");
+    const a=parseInt(d.answer,10);
+    if(!(a>=0&&a<=3)) throw new Error("Bad answer index at #"+(i+1)+".");
+    return {question:String(d.q),options:d.options.map(String),answer:a,explanation:String(d.explanation||"")};
+  });
+}
+async function aiFetchDraft(materialText,label){
+  let last=null;
+  for(let a=0;a<2;a++){
+    const raw=await aiCall("Write exactly 8 multiple-choice CBT questions from these "+label+". Reply with ONLY a JSON array of 8 items, no other text. Strict valid JSON: double quotes only, no trailing commas, keep each explanation under 15 words. Each item: {\"q\": question, \"options\": [exactly 4 short strings], \"answer\": 0-3 index of correct option, \"explanation\": short}. Materials:\n\n"+materialText);
+    try{
+      const items=aiParseQuestions(raw);
+      if(items.length>=3) return items;
+      last=items;
+    }catch(e){last=null;}
+  }
+  if(last&&last.length) return last;
+  throw new Error("AI returned too few questions. Try again.");
+}
+async function aiGenerate(){
+  try{
+    aiBusy(true,"AI is drafting CBT questions…");
+    $("aiQuizBox").hidden=true;
+    const text=(await aiGetText()).slice(0,12000);
+    AIQ=await aiFetchDraft(text,"lecture notes");
+    aiRenderDraft();
+    $("aiQuizBox").hidden=false;
+    aiBusy(false,"Draft ready. Read, practice, or ask the rep to approve.");
+  }catch(e){aiBusy(false,"");$("aiMsg").textContent="Failed: "+((e&&e.message)||e);}
+}
+function aiRenderDraft(){
+  const L=["A","B","C","D"];
+  $("aiQuizArea").innerHTML=AIQ.map(function(x,i){return "<div class='card'><p><strong>Q"+(i+1)+":</strong> "+esc(x.question)+"</p>"+x.options.map(function(o,j){return "<div class='opt"+(j===x.answer?" right":"")+"'>"+L[j]+". "+esc(o)+"</div>";}).join("")+(x.explanation?"<p class='muted'>"+esc(x.explanation)+"</p>":"")+"</div>";}).join("");
+}
+let aiTimer=null,aiPicks=[],aiEnd=0;
+function aiPractice(){
+  if(!AIQ.length) return;
+  aiPicks=new Array(AIQ.length).fill(-1);
+  aiEnd=Date.now()+Math.max(1,parseInt($("aiMins").value||"5",10))*60000;
+  clearInterval(aiTimer);aiTimer=setInterval(aiTick,1000);
+  const L=["A","B","C","D"];
+  $("aiQuizArea").innerHTML="<h3>Timed practice — <span class='timer' id='aiTimerEl'></span></h3>"+AIQ.map(function(x,i){return "<div class='card'><p><strong>Q"+(i+1)+":</strong> "+esc(x.question)+"</p>"+x.options.map(function(o,j){return "<label class='opt'><input type='radio' name='aiq"+i+"' onchange=\"aiPick("+i+","+j+")\"> "+L[j]+". "+esc(o)+"</label>";}).join("")+"</div>";}).join("")+"<button class='primary' onclick='aiSubmit()'>Submit</button>";
+  aiTick();
+}
+function aiTick(){
+  const left=aiEnd-Date.now();
+  if(left<=0){clearInterval(aiTimer);aiSubmit();return;}
+  const el=$("aiTimerEl");
+  if(el){el.textContent=Math.floor(left/60000)+":"+String(Math.floor((left%60000)/1000)).padStart(2,"0")+" left";}
+}
+window.aiPick=function(i,j){aiPicks[i]=j;};
+window.aiSubmit=function(){
+  clearInterval(aiTimer);
+  let score=0;const L=["A","B","C","D"];
+  const html=AIQ.map(function(x,i){const ok=aiPicks[i]===x.answer;if(ok)score++;return "<div class='card'><p><strong>Q"+(i+1)+":</strong> "+esc(x.question)+" — "+(ok?"Correct":"Wrong, answer "+L[x.answer])+"</p></div>";}).join("");
+  $("aiQuizArea").innerHTML="<div class='card'><h3>Score: "+score+" / "+AIQ.length+"</h3><button onclick='aiRenderDraft()'>Back to draft</button></div>"+html;
+};
+async function aiUploadContext(){
+  const d=$("aiUDept").value,l=$("aiULevel").value,s=$("aiUSem").value,c=$("aiUCourse").value.trim().toUpperCase();
+  if(!c) throw new Error("Enter a course code first.");
+  const list=MATERIALS.filter(function(m){return m.dept===d&&m.level===l&&m.semester===s&&m.course.toUpperCase()===c&&m.url;});
+  if(!list.length) throw new Error("No uploaded files for "+c+" in this section yet.");
+  const oc=COURSES.find(function(o){return o.course.toUpperCase()===c;});
+  let ctx=list.map(function(m){return m.course+" — "+m.title+(m.desc?": "+m.desc:"");}).join("\n");
+  if(oc&&(oc.title||oc.body)) ctx+="\nCourse info: "+oc.course+" "+(oc.title||"")+" "+(oc.body||"");
+  const chunks=[];let skipped=0;
+  for(const m of list.slice(0,4)){
+    try{
+      if((m.fileType||"").indexOf("pdf")>=0){
+        await loadPdfJs();
+        const buf=await (await fetch(m.url)).arrayBuffer();
+        const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+        let t="";
+        const n=Math.min(pdf.numPages,8);
+        for(let i=1;i<=n;i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();t+=tc.items.map(function(it){return it.str;}).join(" ")+"\n";}
+        if(t.trim()) chunks.push("From "+(m.fileName||m.title)+":\n"+t); else skipped++;
+      }else if((m.fileType||"").indexOf("text")===0||/\.txt$/i.test(m.fileName||"")){
+        const t=await (await fetch(m.url)).text();
+        if(t.trim()) chunks.push("From "+(m.fileName||m.title)+":\n"+t); else skipped++;
+      }else skipped++;
+    }catch(e){skipped++;}
+  }
+  return {text:(ctx+"\n"+chunks.join("\n")).slice(0,12000),d:d,l:l,s:s,c:c,files:list.length,skipped:skipped};
+}
+async function aiUpExplain(){
+  try{
+    $("aiUpMsg").textContent="Reading uploads…";
+    const u=await aiUploadContext();
+    $("aiUpMsg").textContent="AI is breaking it down…";
+    const out=await aiCall("You are a study tutor for Nigerian university computer science students. From these course materials for "+u.c+": key ideas first, then short bullet points, then 3 likely exam takeaways. Materials:\n\n"+u.text);
+    $("aiResult").innerHTML="<h3>Breakdown: "+esc(u.c)+"</h3><p style='white-space:pre-wrap'>"+esc(out)+"</p>";
+    $("aiResult").hidden=false;
+    $("aiUpMsg").textContent="Done — read "+u.files+" file"+(u.files===1?"":"s")+(u.skipped?"; "+u.skipped+" skipped (images/DOC, AI reads text/PDF only)":"")+".";
+  }catch(e){$("aiUpMsg").textContent="Failed: "+((e&&e.message)||e);}
+}
+async function aiUpGen(){
+  try{
+    $("aiUpMsg").textContent="Reading uploads…";
+    const u=await aiUploadContext();
+    $("aiUpMsg").textContent="AI is drafting CBT questions…";
+    $("aiQuizBox").hidden=true;
+    AIQ=await aiFetchDraft(u.text,"course materials for "+u.c);
+    $("aiDept").value=u.d;$("aiLevel").value=u.l;$("aiSem").value=u.s;$("aiCourse").value=u.c;
+    aiRenderDraft();
+    $("aiQuizBox").hidden=false;
+    $("aiUpMsg").textContent="Draft ready from "+u.files+" file"+(u.files===1?"":"s")+(u.skipped?"; "+u.skipped+" skipped":"")+". Read, practice, or ask the rep to approve.";
+  }catch(e){$("aiUpMsg").textContent="Failed: "+((e&&e.message)||e);}
+}
+async function aiSave(){
+  if(!repUnlocked){$("aiSaveMsg").textContent="Only the signed-in rep can approve to the bank.";return;}  const course=$("aiCourse").value.trim().toUpperCase();
+  if(!course||!AIQ.length){$("aiSaveMsg").textContent="Draft questions + course code needed.";return;}
+  $("aiSaveMsg").textContent="Saving…";
+  try{
+    for(const x of AIQ){
+      const ins=await sb.from("questions").insert({dept:$("aiDept").value,level:$("aiLevel").value,semester:$("aiSem").value,course:course,question:x.question,options:x.options,answer:x.answer,explanation:x.explanation,created_at:Date.now()});
+      if(ins.error) throw ins.error;
+    }
+    $("aiSaveMsg").textContent="Approved "+AIQ.length+" questions to "+course+". They now show under Past Questions.";
+    await refreshAll();
+  }catch(e){$("aiSaveMsg").textContent="Save failed: "+((e&&e.message)||e);}
+}
 function init(){
   $("browseList").innerHTML="<div class='card'>Loading…</div>";
   $("outlineList").innerHTML="<div class='card'>Loading…</div>";
@@ -194,6 +386,13 @@ function init(){
   $("viewerClose").addEventListener("click",function(){$("viewer").hidden=true;$("viewerBody").innerHTML="";});
   $("viewer").addEventListener("click",function(e){if(e.target.id==="viewer"){$("viewer").hidden=true;$("viewerBody").innerHTML="";}});
   $("qStartBtn").addEventListener("click",startQuiz);
+  $("aiExplainBtn").addEventListener("click",aiExplain);
+  $("aiGenBtn").addEventListener("click",aiGenerate);
+  $("aiReadBtn").addEventListener("click",aiRenderDraft);
+  $("aiCbtBtn").addEventListener("click",aiPractice);
+  $("aiSaveBtn").addEventListener("click",aiSave);
+  $("aiUpExplainBtn").addEventListener("click",aiUpExplain);
+  $("aiUpGenBtn").addEventListener("click",aiUpGen);
   $("uUploadBtn").addEventListener("click",doUpload);
   $("repUnlockBtn").addEventListener("click",async function(){
     const em=$("repEmail").value.trim(),pw=$("repPass").value;

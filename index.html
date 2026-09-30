@@ -21,6 +21,7 @@
     <button data-tab="browse">Browse</button>
     <button data-tab="courses">Courses</button>
     <button data-tab="past">Past Questions</button>
+    <button data-tab="ai">AI</button>
     <button data-tab="rep">Rep</button>
   </nav>
 </header>
@@ -35,6 +36,7 @@
       <button class="primary" data-goto="browse">Find materials</button>
       <button data-goto="courses">View courses</button>
       <button data-goto="past">Past questions &amp; CBT</button>
+      <button data-goto="ai">Ask AI</button>
     </div>
     <div class="stats" id="homeStats"></div>
   </div>
@@ -140,6 +142,57 @@
     <button class="primary" id="qStartBtn">Start</button>
   </div>
   <div id="quizArea"></div>
+</section>
+
+<section id="tab-ai" class="tab">
+  <h2>AI study helper</h2>
+  <p class="muted">Paste your notes (or upload PDF/TXT) — or generate straight from a course's uploads below. AI breaks it down and drafts CBT questions. The rep approves drafts into the question bank.</p>
+  <h3>From course uploads</h3>
+  <div class="form">
+    <div class="row">
+      <label>Dept <select id="aiUDept"><option value="csc">CSC</option><option value="ifs">IFS</option><option value="cys">CYS</option></select></label>
+      <label>Level <select id="aiULevel"><option>100</option><option>200</option><option>300</option><option>400</option></select></label>
+      <label>Semester <select id="aiUSem"><option value="first">First</option><option value="second">Second</option></select></label>
+      <label>Course <input id="aiUCourse" placeholder="e.g. CSC 214"></label>
+    </div>
+    <div class="row">
+      <button class="primary" id="aiUpExplainBtn">Explain uploads</button>
+      <button class="primary" id="aiUpGenBtn">CBT from uploads</button>
+    </div>
+    <p id="aiUpMsg" class="muted"></p>
+  </div>
+  <h3>From pasted notes</h3>
+  <div class="form">
+    <label>Notes (paste text)
+      <textarea id="aiInput" rows="6" placeholder="Paste lecture notes here…"></textarea>
+    </label>
+    <label>Or upload PDF / TXT
+      <input id="aiFile" type="file" accept=".pdf,.txt">
+    </label>
+    <div class="row">
+      <button class="primary" id="aiExplainBtn">Explain notes</button>
+      <button class="primary" id="aiGenBtn">Generate CBT questions</button>
+    </div>
+    <p id="aiMsg" class="muted"></p>
+  </div>
+  <div id="aiResult" class="card" hidden></div>
+  <div id="aiQuizBox" hidden>
+    <h3>Draft questions</h3>
+    <div id="aiQuizArea"></div>
+    <div class="filters">
+      <select id="aiDept"><option value="csc">CSC</option><option value="ifs">IFS</option><option value="cys">CYS</option></select>
+      <select id="aiLevel"><option>100</option><option>200</option><option>300</option><option>400</option></select>
+      <select id="aiSem"><option value="first">First</option><option value="second">Second</option></select>
+      <input id="aiCourse" placeholder="Course e.g. CSC 214">
+      <label class="inline">Minutes <input id="aiMins" type="number" value="5" min="1" max="60"></label>
+    </div>
+    <div class="actions">
+      <button id="aiReadBtn">Read-through</button>
+      <button id="aiCbtBtn">Practice timed</button>
+      <button class="primary" id="aiSaveBtn">Approve to bank (rep)</button>
+    </div>
+    <p id="aiSaveMsg" class="muted"></p>
+  </div>
 </section>
 
 <section id="tab-rep" class="tab">
