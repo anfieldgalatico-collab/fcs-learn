@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCS Learn — Faculty of Computer Science</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">FCS</div>
+    <div>
+      <h1 id="siteName">FCS Learn</h1>
+      <p>Faculty of Computer Science &bull; Info Science &bull; Cybersecurity</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button data-tab="home" class="active">Home</button>
+    <button data-tab="browse">Browse</button>
+    <button data-tab="courses">Courses</button>
+    <button data-tab="past">Past Questions</button>
+    <button data-tab="rep">Rep</button>
+  </nav>
+</header>
+
+<main>
+<section id="tab-home" class="tab active">
+  <div class="hero">
+    <h2>Study materials, organized the way you think.</h2>
+    <p>Pick <strong>Department &rarr; Level &rarr; Semester &rarr; Type</strong>, e.g. CSC &gt; 100 Level &gt; First Semester &gt; Assignment &gt; CSC 214.</p>
+    <p class="muted">Only the class rep uploads. Everyone else browses.</p>
+    <div class="hero-actions">
+      <button class="primary" data-goto="browse">Find materials</button>
+      <button data-goto="courses">View courses</button>
+      <button data-goto="past">Past questions &amp; CBT</button>
+    </div>
+    <div class="stats" id="homeStats"></div>
+  </div>
+  <div class="grid3">
+    <div class="card">
+      <h3>Courses</h3>
+      <p>The rep posts the courses you are taking this semester, e.g. CSC 412 — Intro to Bootstrap.</p>
+    </div>
+    <div class="card">
+      <h3>Browse</h3>
+      <p>Open CSC 100L First Semester Assignment and see every CSC 214 assignment the rep uploaded.</p>
+    </div>
+    <div class="card">
+      <h3>Past questions</h3>
+      <p>Read uploaded past-question files, or practice the same questions as a timed CBT.</p>
+    </div>
+  </div>
+</section>
+
+<section id="tab-browse" class="tab">
+  <h2>Browse materials</h2>
+  <div class="filters">
+    <select id="fDept">
+      <option value="">All departments</option>
+      <option value="csc">Computer Science (CSC)</option>
+      <option value="ifs">Information Science (IFS)</option>
+      <option value="cys">Cybersecurity (CYS)</option>
+    </select>
+    <select id="fLevel">
+      <option value="">All levels</option>
+      <option value="100">100 Level</option>
+      <option value="200">200 Level</option>
+      <option value="300">300 Level</option>
+      <option value="400">400 Level</option>
+    </select>
+    <select id="fSem">
+      <option value="">Both semesters</option>
+      <option value="first">First Semester</option>
+      <option value="second">Second Semester</option>
+    </select>
+    <select id="fType">
+      <option value="">All types</option>
+      <option value="assignment">Assignment</option>
+      <option value="note">Lecture Note</option>
+      <option value="past-question">Past Question</option>
+      <option value="exam">Exam</option>
+      <option value="textbook">Textbook</option>
+      <option value="other">Other</option>
+    </select>
+    <input id="fSearch" type="search" placeholder="Search course, title… e.g. CSC 214">
+  </div>
+  <p class="path" id="browsePath"></p>
+  <div id="browseList" class="cards"></div>
+</section>
+
+<section id="tab-courses" class="tab">
+  <h2>Courses this semester</h2>
+  <p class="muted">Posted by the rep so you know the courses you are taking.</p>
+  <div class="filters">
+    <select id="cDept">
+      <option value="">All departments</option>
+      <option value="csc">CSC</option>
+      <option value="ifs">IFS</option>
+      <option value="cys">CYS</option>
+    </select>
+    <select id="cLevel">
+      <option value="">All levels</option>
+      <option value="100">100</option><option>200">200</option>
+      <option value="300">300</option><option>400">400</option>
+    </select>
+    <select id="cSem">
+      <option value="">Both semesters</option>
+      <option value="first">First</option>
+      <option value="second">Second</option>
+    </select>
+    <input id="cSearch" type="search" placeholder="Search course…">
+  </div>
+  <div id="outlineList" class="cards"></div>
+</section>
+
+<section id="tab-past" class="tab">
+  <h2>Past questions</h2>
+  <p class="muted">Uploaded files on top, CBT practice below — same courses.</p>
+  <div class="filters">
+    <select id="qDept">
+      <option value="">All departments</option>
+      <option value="csc">CSC</option>
+      <option value="ifs">IFS</option>
+      <option value="cys">CYS</option>
+    </select>
+    <input id="qCourse" placeholder="Course e.g. CSC 214">
+  </div>
+  <h3>Uploaded past-question files</h3>
+  <div id="pastFiles" class="cards"></div>
+  <h3>Practice CBT</h3>
+  <div class="filters">
+    <select id="qMode">
+      <option value="read">Read-through mode</option>
+      <option value="cbt">CBT timed mode</option>
+    </select>
+    <label class="inline">Questions <input id="qCount" type="number" value="10" min="1" max="50"></label>
+    <label class="inline">Minutes <input id="qMins" type="number" value="10" min="1" max="180"></label>
+    <button class="primary" id="qStartBtn">Start</button>
+  </div>
+  <div id="quizArea"></div>
+</section>
+
+<section id="tab-rep" class="tab">
+  <h2>Rep panel</h2>
+  <p class="muted">Only the rep uploads. Sign in with the rep email and password created in Supabase Authentication.</p>
+  <div class="form" id="loginBox">
+    <label>Rep email
+      <input id="repEmail" type="email" placeholder="rep@example.com">
+    </label>
+    <label>Password
+      <input id="repPass" type="password" placeholder="Password">
+    </label>
+    <div class="row">
+      <button id="repUnlockBtn">Sign in</button>
+      <button id="repLockBtn" hidden>Sign out</button>
+    </div>
+    <p id="repMsg"></p>
+  </div>
+  <div id="repArea" hidden>
+    <h3>1. Course list (courses you are taking)</h3>
+    <div class="form">
+      <div class="row">
+        <label>Dept <select id="oDept"><option value="csc">CSC</option><option value="ifs">IFS</option><option value="cys">CYS</option></select></label>
+        <label>Level <select id="oLevel"><option>100</option><option>200</option><option>300</option><option>400</option></select></label>
+        <label>Semester <select id="oSem"><option value="first">First</option><option value="second">Second</option></select></label>
+      </div>
+      <div class="row">
+        <label>Course code <input id="oCourse" placeholder="CSC 412"></label>
+        <label>Course title <input id="oTitle" placeholder="Intro to Bootstrap"></label>
+      </div>
+      <label>Details (optional — lecturer, units, outline)
+        <textarea id="oBody" rows="3" placeholder="e.g. 2 units, Mr X, weeks 1-6…"></textarea>
+      </label>
+      <button class="primary" id="oSaveBtn">Save course</button>
+    </div>
+    <h3>2. Upload material</h3>
+    <div class="form" id="uploadFormWrap">
+      <div class="row">
+        <label>Department
+          <select id="uDept">
+            <option value="csc">Computer Science (CSC)</option>
+            <option value="ifs">Information Science (IFS)</option>
+            <option value="cys">Cybersecurity (CYS)</option>
+          </select>
+        </label>
+        <label>Level
+          <select id="uLevel"><option>100</option><option>200</option><option>300</option><option>400</option></select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Semester
+          <select id="uSem"><option value="first">First Semester</option><option value="second">Second Semester</option></select>
+        </label>
+        <label>Type
+          <select id="uType">
+            <option value="assignment">Assignment</option>
+            <option value="note">Lecture Note</option>
+            <option value="past-question">Past Question</option>
+            <option value="exam">Exam</option>
+            <option value="textbook">Textbook</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Course code <input id="uCourse" placeholder="e.g. CSC 214" maxlength="12"></label>
+        <label>Year <input id="uYear" type="number" min="2000" max="2035" value="2026"></label>
+      </div>
+      <label>Title <input id="uTitle" placeholder="e.g. CSC 214 Assignment 1" maxlength="120"></label>
+      <label>Description (optional) <textarea id="uDesc" rows="2" maxlength="500"></textarea></label>
+      <label>File (PDF, DOC/DOCX, JPG, PNG) <input id="uFile" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"></label>
+      <button class="primary" id="uUploadBtn">Upload</button>
+      <p id="uploadMsg"></p>
+    </div>
+    <h3>3. Add CBT question (shows inside Past Questions)</h3>
+    <div class="form">
+      <div class="row">
+        <label>Dept <select id="nDept"><option value="csc">CSC</option><option value="ifs">IFS</option><option value="cys">CYS</option></select></label>
+        <label>Level <select id="nLevel"><option>100</option><option>200</option><option>300</option><option>400</option></select></label>
+        <label>Semester <select id="nSem"><option value="first">First</option><option value="second">Second</option></select></label>
+        <label>Course <input id="nCourse" placeholder="CSC 214"></label>
+      </div>
+      <label>Question <textarea id="nQ" rows="2"></textarea></label>
+      <div class="row">
+        <label>A <input id="nA"></label>
+        <label>B <input id="nB"></label>
+      </div>
+      <div class="row">
+        <label>C <input id="nC"></label>
+        <label>D <input id="nD"></label>
+      </div>
+      <div class="row">
+        <label>Correct <select id="nAns"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></label>
+        <label>Explanation <input id="nExp" placeholder="optional"></label>
+      </div>
+      <button class="primary" id="nSaveBtn">Add question</button>
+      <p id="repSaveMsg"></p>
+    </div>
+    <h3>Manage</h3>
+    <div id="repManage"></div>
+  </div>
+</section>
+</main>
+
+<div id="viewer" hidden>
+  <div class="viewer-box">
+    <div class="viewer-head">
+      <strong id="viewerTitle"></strong>
+      <button id="viewerClose">Close</button>
+    </div>
+    <div id="viewerBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
