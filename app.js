@@ -217,13 +217,20 @@ async function aiGetText(){
   throw new Error("Paste notes or upload a PDF/TXT first.");
 }
 function aiBusy(on,msg){$("aiExplainBtn").disabled=on;$("aiGenBtn").disabled=on;$("aiMsg").textContent=on?(msg||"AI is thinking…"):msg||"";}
+function aiClean(t){
+  return String(t).split("\n").map(function(line){
+    let s=line.replace(/^#{1,6}\s*/,"").replace(/^\s*[-*]\s+/,"").replace(/\*\*(.*?)\*\*/g,"$1").replace(/__([^_]+)__/g,"$1").replace(/`([^`]*)`/g,"$1").replace(/^\s*>\s?/,"").trim();
+    return s;
+  }).filter(function(s,i,a){return s!==""||(a[i-1]!==""&&a[i+1]!=="");}).join("\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+const AI_STYLE="Reply in PLAIN TEXT ONLY. No markdown, no # headings, no * or - bullets, no bold, no code blocks. Use short paragraphs separated by blank lines. Number key points like 1) 2) 3). ";
 async function aiExplain(){
   try{
     aiBusy(true,"AI is breaking it down…");
     $("aiResult").hidden=true;
     const text=(await aiGetText()).slice(0,12000);
-    const out=await aiCall("You are a study tutor for Nigerian university computer science students. Explain the following lecture notes simply and clearly: key ideas first, then short bullet points, then 3 likely exam takeaways. Notes:\n\n"+text);
-    $("aiResult").innerHTML="<h3>Breakdown</h3><p style='white-space:pre-wrap'>"+esc(out)+"</p>";
+    const out=await aiCall(AI_STYLE+"You are a study tutor for Nigerian university computer science students. Explain the following lecture notes simply and clearly: key ideas first, then the details, then 3 likely exam takeaways. Notes:\n\n"+text);
+    $("aiResult").innerHTML="<h3>Breakdown</h3><p style='white-space:pre-wrap'>"+esc(aiClean(out))+"</p>";
     $("aiResult").hidden=false;
     aiBusy(false,"");
   }catch(e){aiBusy(false,"");$("aiMsg").textContent="Failed: "+((e&&e.message)||e);}
@@ -338,8 +345,8 @@ async function aiUpExplain(){
     $("aiUpMsg").textContent="Reading uploads…";
     const u=await aiUploadContext();
     $("aiUpMsg").textContent="AI is breaking it down…";
-    const out=await aiCall("You are a study tutor for Nigerian university computer science students. From these course materials for "+u.c+": key ideas first, then short bullet points, then 3 likely exam takeaways. Materials:\n\n"+u.text);
-    $("aiResult").innerHTML="<h3>Breakdown: "+esc(u.c)+"</h3><p style='white-space:pre-wrap'>"+esc(out)+"</p>";
+    const out=await aiCall(AI_STYLE+"You are a study tutor for Nigerian university computer science students. From these course materials for "+u.c+": key ideas first, then the details, then 3 likely exam takeaways. Materials:\n\n"+u.text);
+    $("aiResult").innerHTML="<h3>Breakdown: "+esc(u.c)+"</h3><p style='white-space:pre-wrap'>"+esc(aiClean(out))+"</p>";
     $("aiResult").hidden=false;
     $("aiUpMsg").textContent="Done — read "+u.files+" file"+(u.files===1?"":"s")+(u.skipped?"; "+u.skipped+" skipped (images/DOC, AI reads text/PDF only)":"")+".";
   }catch(e){$("aiUpMsg").textContent="Failed: "+((e&&e.message)||e);}
